@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  OWNER
+  MANAGER
+  TREASURER
+  APPROVER
+  MEMBER
+}
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  OPENING
+  REVERSAL
+}
+enum TransactionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  POSTED
+  REJECTED
+}
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  passwordHash String?
+  googleId String? @unique
+  platformAdmin Boolean @default(false)
+  disabled Boolean @default(false)
+  createdAt DateTime @default(now())
+  sessions Session[]
+  memberships GroupMember[]
+  transactions Transaction[] @relation("Creator")
+  approvals Approval[]
+  notifications Notification[]
+}
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+model OAuthAttempt {
+  id String @id
+  verifier String
+  nonce String
+  expiresAt DateTime
+}
+model Group {
+  id String @id @default(cuid())
+  name String
+  code String @unique
+  slug String @unique
+  description String @default("")
+  logoUrl String?
+  coverUrl String?
+  foundedAt DateTime @default(now())
+  representative String @default("")
+  active Boolean @default(true)
+  isDemo Boolean @default(false)
+  createdAt DateTime @default(now())
+  members GroupMember[]
+  funds Fund[]
+  invitations GroupInvitation[]
+  logs AuditLog[]
+}
+model GroupMember {
+  id String @id @default(cuid())
+  groupId String
+  userId String
+  group Group @relation(fields:[groupId],references:[id])
+  user User @relation(fields:[userId],references:[id])
+  code String
+  roles Role[] @default([MEMBER])
+  active Boolean @default(true)
+  publicName String @default("Người đóng góp ẩn danh")
+  publicConsent Boolean @default(false)
+  phone String @default("")
+  notes String @default("")
+  approvalLimit BigInt?
+  joinedAt DateTime @default(now())
+  dues MemberDue[]
+  contributions Transaction[] @relation("Contributor")
+  @@unique([groupId,userId])
+  @@unique([groupId,code])
+  @@index([userId,active])
+}
+model GroupInvitation {
+  id String @id @default(cuid())
+  groupId String
+  group Group @relation(fields:[groupId],references:[id])
+  email String
+  roles Role[] @default([MEMBER])
+  tokenHash String @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+}
+model Fund {
+  id String @id @default(cuid())
+  groupId String
+  group Group @relation(fields:[groupId],references:[id])
+  name String
+  slug String @unique
+  description String @default("")
+  purpose String @default("Cùng góp sức cho những điều ý nghĩa.")
+  type String @default("GENERAL")
+  visibility Visibility @default(PRIVATE)
+  allowIndex Boolean @default(false)
+  showSummary Boolean @default(true)
+  showContributors Boolean @default(false)
+  allowExport Boolean @default(false)
+  dualControl Boolean @default(true)
+  active Boolean @default(true)
+  lowBalance BigInt @default(1000000)
+  goalAmount BigInt @default(0)
+  bankBin String @default("")
+  bankName String @default("")
+  bankAccount String @default("")
+  bankHolder String @default("")
+  bankPublicConsent Boolean @default(false)
+  publicManager String @default("")
+  createdAt DateTime @default(now())
+  transactions Transaction[] @relation("SourceFund")
+  transfersIn Transaction[] @relation("TargetFund")
+  entries LedgerEntry[]
+  categories Category[]
+  periods FundPeriod[]
+  bankTransactions BankTransaction[]
+  statements StatementImport[]
+  attachments Attachment[]
+  announcements Announcement[]
+  contributionRequests ContributionRequest[]
+  @@index([groupId,active])
+  @@index([visibility,allowIndex])
+}
+model Category {
+  id String @id @default(cuid())
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  name String
+  type TransactionType
+  transactions Transaction[]
+  @@unique([fundId,name,type])
+}
+model Transaction {
+  id String @id @default(cuid())
+  code String @unique
+  fundId String
+  fund Fund @relation("SourceFund",fields:[fundId],references:[id])
+  targetFundId String?
+  targetFund Fund? @relation("TargetFund",fields:[targetFundId],references:[id])
+  type TransactionType
+  amount BigInt
+  description String
+  publicDescription String @default("")
+  isPublic Boolean @default(false)
+  categoryId String?
+  category Category? @relation(fields:[categoryId],references:[id])
+  contributorId String?
+  contributor GroupMember? @relation("Contributor",fields:[contributorId],references:[id])
+  recipient String @default("")
+  paymentMethod String @default("BANK")
+  bankReference String @default("")
+  occurredAt DateTime
+  createdAt DateTime @default(now())
+  postedAt DateTime?
+  createdById String
+  createdBy User @relation("Creator",fields:[createdById],references:[id])
+  status TransactionStatus @default(DRAFT)
+  reversalOfId String? @unique
+  reversalOf Transaction? @relation("Reversal",fields:[reversalOfId],references:[id])
+  reversedBy Transaction? @relation("Reversal")
+  entries LedgerEntry[]
+  approvals Approval[]
+  attachments Attachment[]
+  allocations ContributionAllocation[]
+  reconciliation Reconciliation?
+  @@index([fundId,status,occurredAt])
+  @@index([targetFundId,status])
+  @@index([contributorId,status])
+}
+model LedgerEntry {
+  id String @id @default(cuid())
+  transactionId String
+  transaction Transaction @relation(fields:[transactionId],references:[id])
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  account String
+  amount BigInt
+  @@index([fundId,account])
+  @@index([transactionId])
+}
+model Approval {
+  id String @id @default(cuid())
+  transactionId String
+  transaction Transaction @relation(fields:[transactionId],references:[id])
+  userId String
+  user User @relation(fields:[userId],references:[id])
+  action String
+  reason String @default("")
+  createdAt DateTime @default(now())
+}
+model FundPeriod {
+  id String @id @default(cuid())
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  name String
+  frequency String @default("MONTHLY")
+  startAt DateTime
+  dueAt DateTime
+  standardAmount BigInt
+  closed Boolean @default(false)
+  dues MemberDue[]
+  @@index([fundId,dueAt])
+}
+model MemberDue {
+  id String @id @default(cuid())
+  periodId String
+  period FundPeriod @relation(fields:[periodId],references:[id])
+  memberId String
+  member GroupMember @relation(fields:[memberId],references:[id])
+  amount BigInt
+  adjustments DueAdjustment[]
+  allocations ContributionAllocation[]
+  @@unique([periodId,memberId])
+}
+model DueAdjustment {
+  id String @id @default(cuid())
+  dueId String
+  due MemberDue @relation(fields:[dueId],references:[id])
+  amount BigInt
+  reason String
+  actorId String
+  createdAt DateTime @default(now())
+}
+model ContributionAllocation {
+  id String @id @default(cuid())
+  dueId String
+  due MemberDue @relation(fields:[dueId],references:[id])
+  transactionId String
+  transaction Transaction @relation(fields:[transactionId],references:[id])
+  amount BigInt
+  createdAt DateTime @default(now())
+  @@unique([dueId,transactionId])
+}
+model ContributionRequest {
+  id String @id @default(cuid())
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  reference String @unique
+  amount BigInt
+  publicName String @default("Ẩn danh")
+  status String @default("PENDING")
+  confirmedTransactionId String? @unique
+  createdAt DateTime @default(now())
+}
+model StatementImport {
+  id String @id @default(cuid())
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  filename String
+  actorId String
+  count Int
+  createdAt DateTime @default(now())
+}
+model BankTransaction {
+  id String @id @default(cuid())
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  reference String
+  description String
+  amount BigInt
+  occurredAt DateTime
+  fingerprint String
+  source String @default("IMPORT")
+  reconciliation Reconciliation?
+  createdAt DateTime @default(now())
+  @@unique([fundId,fingerprint])
+  @@index([fundId,occurredAt])
+}
+model Reconciliation {
+  id String @id @default(cuid())
+  bankTransactionId String @unique
+  bankTransaction BankTransaction @relation(fields:[bankTransactionId],references:[id])
+  transactionId String @unique
+  transaction Transaction @relation(fields:[transactionId],references:[id])
+  actorId String
+  note String @default("")
+  createdAt DateTime @default(now())
+}
+model WebhookEvent {
+  id String @id @default(cuid())
+  provider String
+  eventId String
+  payloadHash String
+  payload Json
+  receivedAt DateTime @default(now())
+  @@unique([provider,eventId])
+}
+model Attachment {
+  id String @id @default(cuid())
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  transactionId String?
+  transaction Transaction? @relation(fields:[transactionId],references:[id])
+  originalName String
+  storageKey String @unique
+  mimeType String
+  size Int
+  isPublic Boolean @default(false)
+  reviewed Boolean @default(false)
+  reviewedBy String?
+  uploadedBy String
+  createdAt DateTime @default(now())
+  @@index([fundId])
+}
+model Announcement {
+  id String @id @default(cuid())
+  fundId String
+  fund Fund @relation(fields:[fundId],references:[id])
+  title String
+  content String
+  isPublic Boolean @default(false)
+  actorId String
+  createdAt DateTime @default(now())
+}
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id])
+  title String
+  body String
+  href String @default("/dashboard")
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId,readAt,createdAt])
+}
+model AuditLog {
+  id String @id @default(cuid())
+  groupId String?
+  group Group? @relation(fields:[groupId],references:[id])
+  actorId String?
+  action String
+  entityId String
+  details Json
+  correlationId String
+  outcome String @default("SUCCESS")
+  createdAt DateTime @default(now())
+  @@index([groupId,createdAt])
+}
+model IdempotencyRecord {
+  id String @id @default(cuid())
+  actorId String
+  scope String
+  key String
+  requestHash String
+  resourceId String
+  createdAt DateTime @default(now())
+  @@unique([actorId,scope,key])
+}
+model RateLimit {
+  key String @id
+  count Int
+  expiresAt DateTime
+}

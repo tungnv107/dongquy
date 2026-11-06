@@ -1,0 +1,10 @@
+node_modules
+.next
+.next-e2e
+src/generated
+data
+uploads
+test-results
+playwright-report
+package-lock.json
+PROMPT_WEBSITE_QUAN_LY_QUY_NHOM.md

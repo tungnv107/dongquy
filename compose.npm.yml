@@ -1,0 +1,38 @@
+name: dongquy-production
+services:
+  db:
+    extends: { file: compose.production.yml, service: db }
+    networks: [backend]
+  migrate:
+    extends: { file: compose.production.yml, service: migrate }
+    networks: [backend]
+  app:
+    extends: { file: compose.production.yml, service: app }
+    container_name: dongquy-app
+    ports: ['127.0.0.1:${APP_PORT:-3004}:3000']
+    networks:
+      backend:
+      proxy:
+        aliases: [dongquy-app]
+    mem_limit: 1g
+    cpus: 2
+    pids_limit: 200
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+  maintenance:
+    extends: { file: compose.production.yml, service: migrate }
+    command: ['npm', 'run', 'maintenance']
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set application database URL}
+    networks: [backend]
+    profiles: [ops]
+volumes:
+  production_db:
+  production_uploads:
+networks:
+  backend:
+    internal: true
+  proxy:
+    external: true
+    name: ${NPM_NETWORK:-npm_proxy}
