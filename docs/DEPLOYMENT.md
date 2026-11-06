@@ -1,6 +1,6 @@
 # Hướng dẫn vận hành
 
-## Oracle + Nginx Proxy Manager: dongquy.online
+## Oracle + Nginx Proxy Manager: dongquy.io.vn
 
 Repository: https://github.com/tungnv107/dongquy. Server: `161.118.222.102`, user SSH `ubuntu`, thư mục `/home/ubuntu/dongquy`.
 
@@ -10,7 +10,7 @@ Cấu hình **Add Proxy Host** trong Nginx Proxy Manager đang chạy trên serv
 
 | Trường                | Giá trị                                                    |
 | --------------------- | ---------------------------------------------------------- |
-| Domain Names          | `dongquy.online`                                           |
+| Domain Names          | `dongquy.io.vn`                                            |
 | Scheme                | `http`                                                     |
 | Forward Hostname / IP | `dongquy-app`                                              |
 | Forward Port          | `3000`                                                     |
@@ -20,7 +20,7 @@ Cấu hình **Add Proxy Host** trong Nginx Proxy Manager đang chạy trên serv
 
 Trong **Advanced** thêm `client_max_body_size 11m;` để nhận chứng từ. NPM và app dùng mạng Docker có sẵn `npm_proxy`. Không nhập `127.0.0.1` vào Forward Hostname: đó là loopback của container NPM. Host port `127.0.0.1:3004` phục vụ kiểm tra tại server, không mở ra Internet. Không cần thêm firewall/Oracle ingress cho port 3000/3004 hoặc PostgreSQL.
 
-DNS A của `dongquy.online` cần trỏ về `161.118.222.102` trước khi cấp SSL. APP_URL cố định là `https://dongquy.online`; truy cập bằng tên miền HTTPS để đăng ký/đăng nhập. Mật khẩu DB nằm trong `/home/ubuntu/dongquy/.env.production` (mode 600), không có trong Git.
+DNS A của `dongquy.io.vn` cần trỏ về `161.118.222.102` trước khi cấp SSL. APP_URL cố định là `https://dongquy.io.vn`; truy cập bằng tên miền HTTPS để đăng ký/đăng nhập. Mật khẩu DB nằm trong `/home/ubuntu/dongquy/.env.production` (mode 600), không có trong Git.
 
 Kiểm tra và xem log:
 

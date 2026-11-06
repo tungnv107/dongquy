@@ -20,7 +20,7 @@ import secrets
 from pathlib import Path
 owner, app = secrets.token_hex(32), secrets.token_hex(32)
 env = '\n'.join([
-    'DOMAIN=dongquy.online',
+    'DOMAIN=dongquy.io.vn',
     'APP_PORT=3004',
     'NPM_NETWORK=npm_proxy',
     f'DB_OWNER_PASSWORD={owner}',

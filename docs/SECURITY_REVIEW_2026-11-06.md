@@ -23,7 +23,7 @@ Tham chiếu dependency: [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHS
 - PostgreSQL không publish port, nằm trên mạng backend nội bộ; app dùng role riêng không có quyền DDL/superuser.
 - Container ứng dụng chạy user node, bỏ capabilities, no-new-privileges, giới hạn memory/CPU/PIDs và log rotation.
 - Secrets mới được tạo trên server, `.env.production` có mode 600; không commit .env, khóa, dữ liệu mẫu, uploads hoặc backup.
-- APP_URL ở cả build và runtime là `https://dongquy.online`; cookie Secure và kiểm tra Origin theo tên miền này.
+- APP_URL ở cả build và runtime là `https://dongquy.io.vn`; cookie Secure và kiểm tra Origin theo tên miền này.
 - Production khởi tạo database trống; không chạy seed. Google OAuth và webhook vẫn tắt khi chưa có credentials.
 
 ## Kiểm chứng
